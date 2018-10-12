@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+# coding=utf-8
+import datetime
+import os
+import sys
+import time
+from os.path import join, getsize
+import csv,codecs
+import getopt
+import re
+import commands
+#from decimal import Decimal
+
+def _now(format="%Y-%m-%d %H:%M:%S"):
+    return datetime.datetime.now().strftime(format)
+
+#####可在脚本开始运行时调用，打印当时的时间戳及PID。
+def job_start():
+    print "[%s][PID:%s] job_start" % (_now(), os.getpid())
+
+#####可在脚本执行成功的逻辑分支处调用，打印当时的时间戳及PID。
+def job_success(msg):
+    print "[%s][PID:%s] job_success:[%s]" % (_now(), os.getpid(), msg)
+    sys.exit(0)
+
+#####可在脚本执行失败的逻辑分支处调用，打印当时的时间戳及PID。
+def job_fail(msg):
+    print "[%s][PID:%s] job_fail:[%s]" % (_now(), os.getpid(), msg)
+    sys.exit(1)
+
+
+##### add
+opts, args = getopt.getopt(sys.argv[1:], "c:t:", ["checkDate=", "dataType="])
+for opt, arg in opts:
+    if opt in ("--checkDate", "-c") :
+        checkDate=str(arg)
+    if opt in ("--dataType", "-t") :
+        dataType=str(arg)
+    
+filename1=checkDate
+filename2=checkDate.replace('-', '')
+
+
+if __name__ == '__main__':
+
+    job_start()
+
+######可在此处开始编写您的脚本逻辑代码
+######iJobs中执行脚本成功和失败的标准只取决于脚本最后一条执行语句的返回值
+######如果返回值为0，则认为此脚本执行成功，如果非0，则认为脚本执行失败
+print checkDate
+provinces={'GD':'广东','JS':'江苏','BJ':'北京','HE':'河北','HB':'湖北','XJ':'新疆','XZ':'西藏','JL':'吉林','HA':'河南',
+           'NX':'宁夏','QH':'青海','SN':'陕西','SH':'上海','YN':'云南','CQ':'重庆','AH':'安徽','GX':'广西','GZ':'贵州',
+           'HI':'海南','JX':'江西','TJ':'天津','FJ':'福建','HN':'湖南','LN':'辽宁','NM':'内蒙','SD':'山东','SC':'四川',
+           'HL':'黑龙江','SX':'山西','ZJ':'浙江','GS':'甘肃'}
+sumPath=[]
+for i in sorted(provinces.keys()):
+  path='/user/ultrainm/origindata/MME10-INM/%s/%s' %(i,filename2)
+  sumPath.append(path)
+sumNum=[]
+sumSize = []
+for s in sumPath:
+  cmd = 'kinit ' + '-kt ' + '/var/keytab/ultrainm.keytab ' + 'ultrainm/chinatelecom@CHINATELECOM.CN'
+  cmd1 = ' hadoop fs -ls ' +s+' |wc -l'
+  cmd2 = ' hadoop fs -du -s ' +s+' {} \; 2>/dev/null ' + '|awk \'{sum+=$1}END {printf "%.3f\\n",sum/1024/1024/1024}\''
+  cmd3 = cmd and cmd1
+  cmd4 = cmd and cmd2
+  (cmd3_status, cmd3_stdout)=commands.getstatusoutput(cmd3)
+  (cmd4_status, cmd4_stdout)=commands.getstatusoutput(cmd4)
+  sumNum.append(cmd3_stdout) 
+  sumSize.append(cmd4_stdout)
+sumDate=[]
+for i in range(len(sumPath)):
+  sumDate.append(checkDate)#得到查询日期list
+provinceOrder=[]
+for x in sorted(provinces.keys()):
+  value=provinces[x]
+  provinceOrder.append(value)
+sumNum2=[]
+for j in sumNum:
+  if str(j).isdigit()==False:
+    j=0
+    sumNum2.append(j)
+  else:
+    sumNum2.append(j)
+col1=provinceOrder
+col2=sumNum2
+col3=sumSize
+col4=sumDate
+print col1
+print col2
+print col3
+print col4
+fileName='/tmp/mme10-inm.csv'
+
+with open(fileName, 'wb') as file:#写入CSV
+  file.write(codecs.BOM_UTF8)
+  w = csv.writer(file)
+  
+  w.writerow(('省份', '文件个数','文件大小(GB)','日期'))
+  w.writerows(zip(col1,col2,col3,col4))
+

@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+#coding:utf-8
+
+import requests,json,re
+
+headers={
+'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+'Accept-Encoding': 'gzip, deflate',
+'Accept-Language': 'zh-CN,zh;q=0.9',
+'Cache-Control': 'max-age=0',
+'Connection': 'keep-alive',
+'Content-Length': '106',
+'Content-Type': 'application/x-www-form-urlencoded',
+'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36'
+}
+def login(url,csrf,r_session):
+    data = {
+        'csrfmiddlewaretoken' : csrf,
+        'username': 'xxx',
+        'password': 'xxx',
+        'next':'',
+        'app_id': 'job'
+    }
+
+    response = r_session.post(url, data=data, headers=headers)
+    # print(response)
+    # print(response.headers.keys())
+    # print(response.headers.values())
+    print(response.cookies.keys())
+    #print(response.cookies.values())
+    #print(response.headers['Set-Cookie'])
+
+    return response.content
+
+
+# 第一次访问获取csrf值
+def get_login_web(url):
+    r_session = requests.Session()
+    page = r_session.get('xxx')
+    # print(page.cookies.keys())
+    # print(page.headers.keys())
+    # print(page.headers.values())
+    #print(page.content)
+    reg = re.compile(r"name='csrfmiddlewaretoken' value='(.+)'")
+    csrf = reg.findall('''%s'''% page.content)[0]
+    #print(csrf)
+    login_page = login(url,csrf,r_session)
+    #print login_page
+
+
+if __name__ == "__main__":
+    url = "xxx"
+    get_login_web(url)
+# @app.route('/page')
+# def page(**args):
+#     return render_template('page.html',data=data)
+#
+#
+# if __name__=='__main__':
+#     app.run(debug=True,port=2338)
+
+
+

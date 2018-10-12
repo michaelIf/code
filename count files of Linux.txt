@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+# coding=utf-8
+import datetime
+import os
+import sys
+import time
+from os.path import join, getsize
+import csv,codecs
+import getopt
+import re
+import commands
+#from decimal import Decimal
+
+def _now(format="%Y-%m-%d %H:%M:%S"):
+    return datetime.datetime.now().strftime(format)
+
+#####可在脚本开始运行时调用，打印当时的时间戳及PID。
+def job_start():
+    print "[%s][PID:%s] job_start" % (_now(), os.getpid())
+
+#####可在脚本执行成功的逻辑分支处调用，打印当时的时间戳及PID。
+def job_success(msg):
+    print "[%s][PID:%s] job_success:[%s]" % (_now(), os.getpid(), msg)
+    sys.exit(0)
+
+#####可在脚本执行失败的逻辑分支处调用，打印当时的时间戳及PID。
+def job_fail(msg):
+    print "[%s][PID:%s] job_fail:[%s]" % (_now(), os.getpid(), msg)
+    sys.exit(1)
+
+
+##### add
+opts, args = getopt.getopt(sys.argv[1:], "c:t:", ["checkDate=", "dataType="])
+for opt, arg in opts:
+    if opt in ("--checkDate", "-c") :
+        checkDate=str(arg)
+    if opt in ("--dataType", "-t") :
+        dataType=str(arg)
+    
+filename1=checkDate
+filename2=checkDate.replace('-', '')
+
+
+if __name__ == '__main__':
+
+    job_start()
+
+######可在此处开始编写您的脚本逻辑代码
+######iJobs中执行脚本成功和失败的标准只取决于脚本最后一条执行语句的返回值
+######如果返回值为0，则认为此脚本执行成功，如果非0，则认为脚本执行失败
+print checkDate
+a={'Anhui':'安徽','Beijing':'北京','Fujian':'福建','Gansu':'甘肃',
+   'Guizhou':'贵州','Hainan':'海南','Heilongjiang':'黑龙江',
+   'Hubei':'湖北','Jiangsu':'江苏','Jilin':'吉林','Liaoning':'辽宁',
+  'Ningxia':'宁夏','Qinghai':'青海','Shan3xi':'陕西','Shandong':'山东','Shanghai':'上海',
+   'Shan1xi':'山西','Tianjin':'天津','Xizang':'西藏','Yunnan':'云南','Zhejiang':'浙江',
+}
+b={'Guangdong':'广东','Chongqing':'重庆','Guangxi':'广西','Hebei':'河北','Henan':'河南',
+'Hunan':'湖南','Jiangxi':'江西','Xinjiang':'新疆', 'Neimeng':'内蒙','Sichuan':'四川'
+}
+sumPath=[]
+for i in sorted(a.keys()):
+  path=('/user/ywgz/cache_lw/dpi/S1mme/%s/*/%s' %(filename2,i))
+  sumPath.append(path)
+sumNum = []
+sumSize = []
+for s in sumPath:
+  cmd = 'kinit ' + '-kt ' + '/var/keytab/ultrainm.keytab ' + 'ultrainm/chinatelecom@CHINATELECOM.CN'
+  cmd1 = ' hadoop fs -ls ' +s+' |wc -l'
+  cmd2 = ' hadoop fs -du -s ' +s+' {} \; 2>/dev/null ' + '|awk \'{sum+=$1}END {printf "%.3f\\n",sum/1024/1024/1024}\''
+  cmd3 = cmd and cmd1
+  cmd4 = cmd and cmd2
+  (cmd3_status, cmd3_stdout)=commands.getstatusoutput(cmd3)
+  (cmd4_status, cmd4_stdout)=commands.getstatusoutput(cmd4)
+  sumNum.append(cmd3_stdout) 
+  sumSize.append(cmd4_stdout)
+sumDate=[]
+for i in range(31):
+  sumDate.append(checkDate)#得到查询日期list
+provinceOrder=[]
+for x in sorted(a.keys()):
+  value=a[x]
+  provinceOrder.append(value)
+provinceOrder=provinceOrder+b.values()
+add0=[]
+for i in range (10):
+  add0.append('0')
+sumNum=sumNum+add0
+sumSize=sumSize+add0
+col1=provinceOrder
+col2=sumNum
+col3=sumSize
+col4=sumDate
+print col1
+print col2
+print col3
+print col4
+
+fileName='/tmp/cache_lw_mme.csv'
+
+with open(fileName, 'wb') as file:#写入CSV
+  file.write(codecs.BOM_UTF8)
+  w = csv.writer(file)
+  
+  w.writerow(('省份', '文件个数','文件大小(GB)','日期'))
+  w.writerows(zip(col1,col2,col3,col4))
+
